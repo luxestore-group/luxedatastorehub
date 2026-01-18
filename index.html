@@ -130,6 +130,10 @@
             color: #4ade80 !important;
             transform: scale(1.2);
         }
+
+        /* MUST READ BANNER */
+        .must-read-title { color: #ffd700; font-weight: 900; letter-spacing: 0.02em; }
+        .must-read-text { color: #fff; }
     </style>
 </head>
 <body class="min-h-screen">
@@ -216,6 +220,21 @@
                     <span>Instructions</span>
                 </button>
             </div>
+
+            <div class="max-w-4xl mx-auto mt-6">
+                <div class="glass-card p-4 rounded-2xl border border-yellow-500/20">
+                    <h3 class="must-read-title text-lg mb-2">MUST READ</h3>
+                    <p class="must-read-text font-bold mb-2">USER MUST CONFIRM ORDER BEFORE PAYMENT ON THE SITE TO ENSURE SMOOTH DELIVERY!!</p>
+                    <ul class="must-read-text text-sm space-y-1">
+                        <li>• All products are ready for delivery.</li>
+                        <li>• Users must provide correct info before and after payment.</li>
+                        <li>• TURBONET / BROADBAND SIMs do not work for this type of data bundles.</li>
+                        <li>• Purchase for wrong numbers are non-refundable.</li>
+                        <li>• Data bundle delivery: 30 mins – 1 hr (2hrs max) for only DATABUNDLES.</li>
+                    </ul>
+                </div>
+            </div>
+
         </div>
 
         <div class="px-6 pb-24">
@@ -273,7 +292,7 @@
                     <p class="text-gray-400 text-xs uppercase tracking-widest">Workflow Management</p>
                 </div>
                 <div class="flex items-center gap-4">
-                    <input id="admin-search" oninput="searchOrders(this.value)" type="text" placeholder="Search order id e.g. LX-12345" class="bg-white/5 rounded-xl p-2 outline-none text-sm border border-white/10" />
+                    <input id="admin-search" oninput="searchOrders(this.value)" type="text" placeholder="Search order id e.g. 123456" class="bg-white/5 rounded-xl p-2 outline-none text-sm border border-white/10" />
                     <button onclick="clearAllOrders()" class="text-xs bg-red-600/20 text-red-500 px-3 py-2 rounded hover:bg-red-600 hover:text-white transition">Clear All Orders</button>
                     <button onclick="closeAdmin()" class="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl transition">
                         <i class="fa-solid fa-times mr-2"></i> Close
@@ -438,18 +457,15 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        // ADMIN UID (only this UID can see/control admin dashboard)
+        // ADMIN UID
         const ADMIN_ID = "VuJUYF69VCUBzo0y5mnrkAGgBqj1";
-        // Helper to ensure only the designated admin UID can access admin functions
         function isAdmin(){ return currentUser && currentUser.uid === ADMIN_ID; }
 
-        // HARPOON CONFIG - YOU MUST SET THE CORRECT HARPOON VERIFY ENDPOINT
-        const HARPOON_API_KEY = "hpn_live_sk_spUhtbnQoB2WKaOIKpfqC8pxVRuBXxFK"; // keep secret server-side ideally
-        const HARPOON_VERIFY_URL = "https://api.harpoonpay.com/v1/transactions/verify"; // <-- replace with real endpoint if different
+        const HARPOON_API_KEY = "hpn_live_sk_spUhtbnQoB2WKaOIKpfqC8pxVRuBXxFK";
+        const HARPOON_VERIFY_URL = "https://api.harpoonpay.com/v1/transactions/verify"; 
         const PAYMENT_NUMBER = "0548164533";
         const ACCOUNT_NAME = "ASANTE JUDE OSEI";
 
-        // APP DATA
         const bundles = [
             { id: 1, name: '1GB', price: 6, hot: false },
             { id: 2, name: '2GB', price: 12, hot: false },
@@ -468,16 +484,18 @@
         let isDarkMode = true;
         let currentUser = null;
 
-        // PAYMENT STATE
         let currentOrderData = null;
         let timerInterval = null;
 
-        // THEME LOGIC
+        // UPDATED REF GENERATION (NUMBERS ONLY)
+        function genRef() {
+            return Math.floor(100000 + Math.random() * 900000).toString();
+        }
+
         function toggleTheme() {
             isDarkMode = !isDarkMode;
             const body = document.body;
             const icon = document.getElementById('theme-icon');
-
             if (!isDarkMode) {
                 body.classList.add('light-mode');
                 icon.classList.remove('fa-moon');
@@ -489,7 +507,6 @@
             }
         }
 
-        // TOAST LOGIC
         function toast(msg, type='info') {
             const wrap = document.getElementById('toast-wrap');
             const div = document.createElement('div');
@@ -499,14 +516,13 @@
             setTimeout(() => { div.style.opacity = '0'; setTimeout(() => div.remove(), 500); }, 3000);
         }
 
-        // AUTH LOGIC
         auth.onAuthStateChanged(user => {
             currentUser = user;
             if (user) {
                 document.getElementById('auth-page').classList.add('hidden');
                 document.getElementById('main-app').classList.remove('hidden');
                 renderBundles();
-                initNotifications(); // Start listening for updates
+                initNotifications();
                 if(user.uid === ADMIN_ID) {
                     document.getElementById('admin-btn').classList.remove('hidden');
                 } else {
@@ -543,9 +559,6 @@
 
         function logout() { auth.signOut(); }
 
-        // ==========================================
-        // USER DASHBOARD
-        // ==========================================
         function openUserDashboard() {
             if(!currentUser) return;
             document.getElementById('user-dashboard').classList.remove('hidden');
@@ -563,670 +576,354 @@
             db.collection('orders').where('uid', '==', currentUser.uid).orderBy('time', 'desc').limit(20).get()
             .then(snap => {
                 if(snap.empty) {
-                    list.innerHTML = '<div class="text-center text-gray-500">No previous orders found.</div>';
+                    list.innerHTML = '<div class="text-center text-gray-500">No previous orders found</div>';
                     return;
                 }
-                list.innerHTML = snap.docs.map(doc => {
-                    const data = doc.data();
-                    let color = 'text-yellow-500';
-                    if(data.status === 'Processing') color = 'text-blue-500';
-                    if(data.status === 'Delivered') color = 'text-green-500';
-
-                    return `
-                    <div class="bg-white/5 p-4 rounded-xl flex justify-between items-center border border-white/5">
-                        <div>
-                            <p class="font-bold text-sm text-inherit">${data.item}</p>
-                            <p class="text-[10px] text-gray-500">${new Date(data.time.seconds*1000).toLocaleDateString()}</p>
-                        </div>
-                        <div class="text-right">
-                            <p class="font-bold text-inherit">GHC ${data.price}</p>
-                            <p class="text-[10px] font-bold uppercase ${color}">${data.status}</p>
-                        </div>
-                    </div>`;
-                }).join('');
-            });
-        }
-
-        // ==========================================
-        // NOTIFICATIONS SYSTEM
-        // ==========================================
-        function initNotifications() {
-            if(!currentUser) return;
-            const dot = document.getElementById('notif-dot');
-            const list = document.getElementById('notif-list');
-
-            db.collection('orders').where('uid', '==', currentUser.uid).limit(10).onSnapshot(snap => {
-                let updates = [];
+                list.innerHTML = '';
                 snap.forEach(doc => {
-                    const d = doc.data();
-                    updates.push({
-                        type: 'order',
-                        msg: `Order #${d.oId} is ${d.status}`,
-                        status: d.status,
-                        time: d.time ? d.time.seconds : Date.now()/1000
-                    });
-                });
-                renderNotifications(updates);
-            });
-
-            db.collection('broadcasts').orderBy('time', 'desc').limit(5).onSnapshot(snap => {
-                let broadcasts = [];
-                snap.forEach(doc => {
-                    broadcasts.push({
-                        type: 'system',
-                        msg: doc.data().message,
-                        time: doc.data().time.seconds
-                    });
-                });
-                window.currentBroadcasts = broadcasts;
-            });
-        }
-
-        function renderNotifications(orderUpdates) {
-            const list = document.getElementById('notif-list');
-            const dot = document.getElementById('notif-dot');
-            const all = [...orderUpdates, ...(window.currentBroadcasts || [])].sort((a,b) => b.time - a.time);
-
-            if(all.length > 0) {
-                dot.classList.remove('hidden');
-                list.innerHTML = all.map(n => {
-                    let icon = '<i class="fa-solid fa-box text-blue-400"></i>';
-                    if(n.type === 'system') icon = '<i class="fa-solid fa-bullhorn text-yellow-500"></i>';
-                    else if(n.status === 'Delivered') icon = '<i class="fa-solid fa-check-circle text-green-500"></i>';
-
-                    return `
-                    <div class="flex gap-3 items-start bg-white/5 p-3 rounded-lg border-b border-white/5">
-                        <div class="mt-1">${icon}</div>
-                        <div>
-                            <p class="text-sm text-gray-200">${n.msg}</p>
-                            <p class="text-[10px] text-gray-500 mt-1">${new Date(n.time*1000).toLocaleTimeString()}</p>
+                    const o = doc.data();
+                    const d = new Date(o.time).toLocaleDateString();
+                    list.innerHTML += `
+                        <div class="bg-white/5 border border-white/10 p-4 rounded-xl flex justify-between items-center">
+                            <div>
+                                <p class="text-xs text-yellow-500 font-mono">#${o.ref}</p>
+                                <p class="text-sm font-bold text-white">${o.product}</p>
+                                <p class="text-[10px] text-gray-500">${d} • ${o.recipient}</p>
+                            </div>
+                            <span class="text-[10px] px-2 py-1 rounded-full uppercase font-bold status-${o.status}">${o.status}</span>
                         </div>
-                    </div>`;
-                }).join('');
-            } else {
-                dot.classList.add('hidden');
-                list.innerHTML = '<div class="text-center text-gray-500 text-xs py-4">No new notifications</div>';
-            }
+                    `;
+                });
+            });
         }
 
-        function toggleNotifications() {
-            document.getElementById('notif-panel').classList.toggle('hidden');
-            if(!document.getElementById('notif-panel').classList.contains('hidden')) {
-                document.getElementById('notif-dot').classList.add('hidden');
-            }
-        }
-
-        // CORE UI
         function renderBundles() {
             const grid = document.getElementById('bundle-grid');
-            grid.innerHTML = bundles.map((b, i) => `
-                <div class="glass-card p-6 rounded-3xl relative animate-up group transition-all duration-500 hover:scale-[1.02]" style="animation-delay: ${i*0.1}s">
-                    ${b.hot ? '<span class="absolute -top-3 left-6 bg-red-600 text-[10px] font-bold px-3 py-1 rounded-full text-white uppercase tracking-widest">Hot Seller</span>' : ''}
-                    <div class="flex justify-between items-start mb-8">
-                        <div>
-                            <h3 class="text-4xl font-black text-white">${b.name}</h3>
-                            <p class="text-[10px] text-gray-500 uppercase tracking-widest">Ultra-Speed Data</p>
+            grid.innerHTML = bundles.map(b => `
+                <div class="glass-card p-6 rounded-3xl relative overflow-hidden group hover:scale-[1.02] transition duration-300">
+                    ${b.hot ? '<div class="absolute -right-8 top-4 bg-yellow-500 text-black text-[10px] font-black px-10 py-1 rotate-45 shadow-lg">HOT</div>' : ''}
+                    <div class="flex justify-between items-start mb-6">
+                        <div class="w-12 h-12 bg-yellow-500/10 rounded-2xl flex items-center justify-center text-yellow-500">
+                            <i class="fa-solid fa-signal text-xl"></i>
                         </div>
                         <div class="text-right">
-                            <p class="text-[10px] text-gray-500 uppercase">Premium Price</p>
-                            <p class="text-2xl font-bold shimmer">GHC ${b.price}</p>
+                            <p class="text-[10px] text-gray-400 uppercase tracking-widest">Pricing</p>
+                            <p class="text-2xl font-black text-inherit">GHC ${b.price}</p>
                         </div>
                     </div>
-                    <div class="flex gap-3">
-                        <button onclick="buyNow(${b.id})" class="flex-1 btn-premium py-4 rounded-2xl text-sm">SECURE BUY</button>
-                        <button onclick="addToBag(${b.id})" class="w-14 h-14 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center hover:bg-white/10 transition">
-                            <i class="fa-solid fa-cart-plus text-gray-400"></i>
+                    <h3 class="text-xl font-bold mb-1">${b.name} Data</h3>
+                    <p class="text-xs text-gray-500 mb-6">Valid for 30 Days • No Expiry</p>
+                    <div class="flex gap-2">
+                        <button onclick="openOrderModal(${b.id})" class="flex-1 btn-premium py-3 rounded-xl text-xs">BUY NOW</button>
+                        <button onclick="addToCart(${b.id})" class="w-12 bg-white/5 hover:bg-white/10 rounded-xl flex items-center justify-center transition border border-white/10">
+                            <i class="fa-solid fa-cart-plus text-yellow-500"></i>
                         </button>
                     </div>
                 </div>
             `).join('');
         }
 
-        function buyNow(id) {
-            activeProduct = bundles.find(b => b.id === id);
-            document.getElementById('order-info').innerHTML = `
-                <div class="flex justify-between font-bold">
-                    <span class="text-gray-400">Bundle:</span>
-                    <span>${activeProduct.name}</span>
-                </div>
-                <div class="flex justify-between font-bold mt-2">
-                    <span class="text-gray-400">Total:</span>
-                    <span class="text-yellow-500 italic">GHC ${activeProduct.price}</span>
-                </div>
-            `;
-            document.getElementById('order-modal').classList.remove('hidden');
-        }
-
-        // CART FUNCTIONS
-        function addToBag(id) {
+        function addToCart(id) {
             const b = bundles.find(x => x.id === id);
             cart.push(b);
-            updateCartCount();
-            toast(`${b.name} added to cart!`);
+            updateCartUI();
+            toast(`${b.name} added to bag`);
         }
 
-        function updateCartCount() {
+        function updateCartUI() {
             const count = document.getElementById('cart-count');
             count.innerText = cart.length;
-            if(cart.length > 0) {
-                count.classList.remove('hidden');
-            } else {
-                count.classList.add('hidden');
-            }
+            count.classList.toggle('hidden', cart.length === 0);
         }
 
         function showCart() {
-            if(cart.length === 0) return toast("Your cart is empty!", "error");
-
             const list = document.getElementById('cart-items-list');
+            const totalEl = document.getElementById('cart-total-price');
+            list.innerHTML = '';
             let total = 0;
 
-            list.innerHTML = cart.map((item, index) => {
-                total += item.price;
-                return `
-                <div class="bg-white/5 p-3 rounded-xl flex justify-between items-center border border-white/5">
-                    <div>
-                        <p class="font-bold text-inherit">${item.name}</p>
-                        <p class="text-xs text-gray-400">Data Bundle</p>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <span class="text-yellow-500 font-bold">GHC ${item.price}</span>
-                        <button onclick="removeFromCart(${index})" class="text-gray-500 hover:text-red-500"><i class="fa-solid fa-trash"></i></button>
-                    </div>
-                </div>`;
-            }).join('');
-
-            document.getElementById('cart-total-price').innerText = `GHC ${total}`;
+            if(cart.length === 0) {
+                list.innerHTML = '<p class="text-center text-gray-500 py-10">Your bag is empty</p>';
+            } else {
+                cart.forEach((item, idx) => {
+                    total += item.price;
+                    list.innerHTML += `
+                        <div class="bg-white/5 p-3 rounded-xl flex justify-between items-center border border-white/10">
+                            <div>
+                                <p class="font-bold text-sm">${item.name} Package</p>
+                                <p class="text-xs text-yellow-500">GHC ${item.price}</p>
+                            </div>
+                            <button onclick="removeFromCart(${idx})" class="text-red-500 p-2"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    `;
+                });
+            }
+            totalEl.innerText = `GHC ${total}`;
             document.getElementById('cart-modal').classList.remove('hidden');
         }
 
-        function removeFromCart(index) {
-            cart.splice(index, 1);
-            updateCartCount();
-            if(cart.length === 0) {
-                closeModals();
-                toast("Cart cleared");
-            } else {
-                showCart();
-            }
+        function removeFromCart(idx) {
+            cart.splice(idx, 1);
+            showCart();
+            updateCartUI();
         }
 
         function clearCart() {
             cart = [];
-            updateCartCount();
-            closeModals();
-            toast("Cart cleared");
+            showCart();
+            updateCartUI();
+        }
+
+        function openOrderModal(id) {
+            activeProduct = bundles.find(b => b.id === id);
+            document.getElementById('order-info').innerHTML = `
+                <p class="text-xs text-gray-400 uppercase">Selected Plan</p>
+                <p class="text-xl font-bold">${activeProduct.name} - GHC ${activeProduct.price}</p>
+            `;
+            document.getElementById('order-modal').classList.remove('hidden');
         }
 
         function closeModals() {
-            document.getElementById('order-modal').classList.add('hidden');
-            document.getElementById('cart-modal').classList.add('hidden');
-            document.getElementById('payment-modal').classList.add('hidden');
+            document.querySelectorAll('#order-modal, #cart-modal, #payment-modal').forEach(m => m.classList.add('hidden'));
             clearInterval(timerInterval);
         }
 
-        // ==========================================
-        // NEW PAYMENT SYSTEM (HARPOON MANUAL)
-        // ==========================================
-        function proceedToPayment(source) {
-            let phoneInputId = source === 'single' ? 'order-phone' : 'cart-phone';
-            const phone = document.getElementById(phoneInputId).value;
+        function proceedToPayment(type) {
+            let phone, amount, productLabel;
 
-            if(!phone || phone.length < 10) return toast("Enter valid phone number", "error");
-
-            let total = 0;
-            let items = "";
-            let oId = 'LX-' + Math.floor(Math.random()*90000 + 10000); // PERMANENT ID
-
-            if(source === 'single') {
-                total = activeProduct.price;
-                items = activeProduct.name;
+            if(type === 'single') {
+                phone = document.getElementById('order-phone').value;
+                if(!phone || phone.length < 10) return toast("Valid number required", "error");
+                amount = activeProduct.price;
+                productLabel = activeProduct.name;
             } else {
-                cart.forEach(i => total += i.price);
-                items = cart.map(i => i.name).join(', ');
-                oId = 'CART-' + Math.floor(Math.random()*90000 + 10000); // PERMANENT ID
+                phone = document.getElementById('cart-phone').value;
+                if(!phone || phone.length < 10) return toast("Valid number required", "error");
+                if(cart.length === 0) return toast("Cart is empty", "error");
+                amount = cart.reduce((s, i) => s + i.price, 0);
+                productLabel = cart.map(i => i.name).join(', ');
             }
 
-            // Store Current Order Data State
+            const ref = genRef();
             currentOrderData = {
-                oId: oId, // Persistent Ref ID
                 uid: currentUser.uid,
-                item: items,
-                price: total,
-                phone: phone,
-                status: 'Pending Verification', // Waiting for manual check
-                harpoonConfirmed: false,
-                time: firebase.firestore.FieldValue.serverTimestamp()
+                email: currentUser.email,
+                product: productLabel,
+                amount: amount,
+                recipient: phone,
+                ref: ref,
+                status: 'pending',
+                time: Date.now()
             };
 
-            // Populate Payment Modal
-            document.getElementById('pay-amount').innerText = `GHC ${total}`;
-            document.getElementById('pay-ref').innerText = oId;
-            document.getElementById('pay-number').innerText = PAYMENT_NUMBER;
-            document.getElementById('pay-name').innerText = ACCOUNT_NAME;
-
-            // Switch Modals
+            document.getElementById('pay-amount').innerText = `GHC ${amount.toFixed(2)}`;
+            document.getElementById('pay-ref').innerText = ref;
+            
             document.getElementById('order-modal').classList.add('hidden');
             document.getElementById('cart-modal').classList.add('hidden');
             document.getElementById('payment-modal').classList.remove('hidden');
 
-            // Start Timer
-            startTimer(10 * 60);
+            startTimer(600);
         }
 
-        function startTimer(duration) {
-            let timer = duration, minutes, seconds;
-            const display = document.getElementById('timer');
+        function startTimer(sec) {
             clearInterval(timerInterval);
-
-            timerInterval = setInterval(function () {
-                minutes = parseInt(timer / 60, 10);
-                seconds = parseInt(timer % 60, 10);
-
-                minutes = minutes < 10 ? "0" + minutes : minutes;
-                seconds = seconds < 10 ? "0" + seconds : seconds;
-
-                display.textContent = minutes + ":" + seconds;
-
-                if (--timer < 0) {
-                    clearInterval(timerInterval);
-                    display.textContent = "EXPIRED";
-                    display.classList.add('text-red-700');
-                }
+            const el = document.getElementById('timer');
+            timerInterval = setInterval(() => {
+                let m = Math.floor(sec/60), s = sec % 60;
+                el.innerText = `${m}:${s < 10 ? '0'+s : s}`;
+                if(sec <= 0) { clearInterval(timerInterval); closeModals(); toast("Payment timed out", "error"); }
+                sec--;
             }, 1000);
         }
 
         function copyToClip(text, btn) {
             navigator.clipboard.writeText(text);
             const icon = btn.querySelector('i');
-            icon.classList.remove('fa-copy');
-            icon.classList.add('fa-check', 'copy-flash');
-            setTimeout(() => {
-                icon.classList.remove('fa-check', 'copy-flash');
-                icon.classList.add('fa-copy');
-            }, 1000);
-            toast("Copied to clipboard");
+            icon.className = 'fa-solid fa-check copy-flash';
+            setTimeout(() => icon.className = 'fa-regular fa-copy', 2000);
         }
-
         function copyToClipAmount(btn) {
-            const amount = document.getElementById('pay-amount').innerText.replace('GHC ', '');
-            copyToClip(amount, btn);
+            const amt = currentOrderData.amount.toFixed(2);
+            copyToClip(amt, btn);
         }
-
         function copyToClipRef(btn) {
-            const ref = document.getElementById('pay-ref').innerText;
-            copyToClip(ref, btn);
+            copyToClip(currentOrderData.ref, btn);
         }
 
-        // confirmPayment now uses a deterministic doc id (oId) to avoid duplicates
-        // it will prevent re-submission for the same order unless the existing order is Delivered
-        function confirmPayment() {
-            if(!currentOrderData) return;
-
-            const orderRef = db.collection('orders').doc(currentOrderData.oId);
-
-            // Disable button to prevent double clicks while processing
+        async function confirmPayment() {
             const btn = document.getElementById('i-paid-btn');
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch animate-spin"></i> VERIFYING...';
             btn.disabled = true;
-            btn.classList.add('opacity-60', 'cursor-not-allowed');
 
-            orderRef.get().then(docSnap => {
-                if(docSnap.exists) {
-                    const data = docSnap.data();
-                    // If the order is already recorded and not delivered, we stop duplicate submissions
-                    if(data.status && data.status !== 'Delivered') {
-                        toast('Order already recorded. Await admin confirmation.');
-                        btn.disabled = false;
-                        btn.classList.remove('opacity-60', 'cursor-not-allowed');
-                        return Promise.reject('duplicate');
-                    }
-                }
-
-                // Save (overwrite if previously delivered) with our canonical id
-                return orderRef.set(currentOrderData);
-            }).then(() => {
-                // Send assurance message to buyer (short) and open WhatsApp for manual confirmation
-                const msg = `*PAYMENT SENT*%0A*Ref ID:* ${currentOrderData.oId}%0A*Bundles:* ${currentOrderData.item}%0A*Phone:* ${currentOrderData.phone}%0A*Amount:* GHC ${currentOrderData.price}%0A%0AI have sent the money manually to ${PAYMENT_NUMBER}. Please verify and approve.`;
-
-                // Clear cart if cart order
-                if(currentOrderData.oId.startsWith('CART')) {
-                    cart = [];
-                    updateCartCount();
-                }
-
+            db.collection('orders').add(currentOrderData)
+            .then(() => {
+                toast("Order logged! Our team will verify and deliver shortly.");
+                if(currentOrderData.product.includes(',')) cart = []; updateCartUI();
                 closeModals();
-
-                // show short assurance to user
-                toast('Thanks — we recorded your payment. Delivery will be processed once payment is verified.');
-
-                // Open whatsapp as secondary confirmation
-                window.open(`https://wa.me/233548164533?text=${msg}`, '_blank');
-
-                // Trigger a verification attempt (non-blocking): will update order when Harpoon confirms
-                attemptHarpoonVerification(currentOrderData.oId).catch(e => console.warn('Harpoon check deferred', e));
-            }).catch(err => {
-                if(err !== 'duplicate') {
-                    toast('Error processing order: ' + (err.message || err), 'error');
-                }
-            }).finally(() => {
+            })
+            .catch(err => {
+                toast("Error: " + err.message, "error");
+                btn.innerHTML = 'I HAVE SENT THE MONEY <i class="fa-solid fa-check-double"></i>';
                 btn.disabled = false;
-                btn.classList.remove('opacity-60', 'cursor-not-allowed');
             });
         }
-
-        // ==========================================
-        // HARPOON VERIFICATION (simple polling / manual verify)
-        // ==========================================
-        // NOTE: Harpoon secret keys should be called from a secure server — this implementation
-        // attempts verification from the client as a convenience but you should move it server-side
-        // for production. Replace HARPOON_VERIFY_URL with your actual Harpoon verification endpoint.
-
-        async function attemptHarpoonVerification(oId) {
-            try {
-                if(!HARPOON_VERIFY_URL) throw new Error('No HARPOON_VERIFY_URL set');
-
-                // Fetch the order doc to get amount/phone
-                const docSnap = await db.collection('orders').doc(oId).get();
-                if(!docSnap.exists) throw new Error('Order not found');
-                const order = docSnap.data();
-
-                // Example: call Harpoon API to verify by reference or by amount/number (customize for your setup)
-                const payload = {
-                    reference: oId,
-                    amount: order.price,
-                    phone: order.phone
-                };
-
-                // Try to call Harpoon verify endpoint
-                const res = await fetch(HARPOON_VERIFY_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${HARPOON_API_KEY}`
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                if(!res.ok) {
-                    // If the verification endpoint isn't available or returns 404/401, just exit silently
-                    console.warn('Harpoon verification returned', res.status);
-                    return false;
-                }
-
-                const data = await res.json();
-
-                // The response shape will depend on Harpoon's API. Expect something like { confirmed: true, tx_ref: '...' }
-                if(data && data.confirmed) {
-                    // Mark the order as confirmed and update status so admin sees it
-                    await db.collection('orders').doc(oId).update({ harpoonConfirmed: true, status: 'Processing', harpoonData: data, verifiedAt: firebase.firestore.FieldValue.serverTimestamp() });
-                    // send broadcast/notification to admin (admins will see via listener)
-                    return true;
-                } else {
-                    // keep as pending and possibly re-attempt later
-                    return false;
-                }
-
-            } catch (e) {
-                // don't spam logs
-                console.warn('Harpoon verify error', e);
-                return false;
-            }
-        }
-
-        // Periodic background verifier for any pending verification orders (runs only when admin is open)
-        let harpoonPollInterval = null;
-        function startHarpoonPolling() {
-            if(harpoonPollInterval) return;
-            harpoonPollInterval = setInterval(async () => {
-                const snap = await db.collection('orders').where('status', '==', 'Pending Verification').get();
-                snap.forEach(doc => {
-                    attemptHarpoonVerification(doc.id).catch(()=>{});
-                });
-            }, 30 * 1000); // every 30s; adjust as needed
-        }
-        function stopHarpoonPolling() { if(harpoonPollInterval) clearInterval(harpoonPollInterval); harpoonPollInterval = null; }
-
-        // ==========================================
-        // ADMIN FUNCTIONALITY
-        // ==========================================
-        let adminListener = null;
 
         function openAdmin() {
-            if(!isAdmin()){ toast('Unauthorized'); return; }
+            if(!isAdmin()) return;
             document.getElementById('admin-dashboard').classList.remove('hidden');
             fetchOrders();
-            startHarpoonPolling();
         }
+        function closeAdmin() { document.getElementById('admin-dashboard').classList.add('hidden'); }
 
-        function closeAdmin() {
-            document.getElementById('admin-dashboard').classList.add('hidden');
-            if(adminListener) adminListener();
-            stopHarpoonPolling();
-        }
-
+        let allOrders = [];
         function fetchOrders() {
-            if(!isAdmin()){ toast('Unauthorized'); return; }
+            db.collection('orders').orderBy('time', 'desc').limit(100).get().then(snap => {
+                allOrders = [];
+                snap.forEach(doc => allOrders.push({id: doc.id, ...doc.data()}));
+                renderAdminOrders(allOrders);
+                updateStats(allOrders);
+            });
+        }
+
+        function updateStats(orders) {
+            document.getElementById('stat-total').innerText = orders.length;
+            document.getElementById('stat-pending').innerText = orders.filter(o => o.status === 'pending' || o.status === 'processing').length;
+            document.getElementById('stat-delivered').innerText = orders.filter(o => o.status === 'delivered').length;
+        }
+
+        function renderAdminOrders(orders) {
             const list = document.getElementById('admin-orders-list');
-            if(adminListener) adminListener(); // unsubscribe previous
-
-            adminListener = db.collection('orders').orderBy('time', 'desc').limit(200).onSnapshot(snapshot => {
-                let html = '';
-                let total = 0;
-                let pending = 0;
-                let delivered = 0;
-
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    const id = doc.id;
-                    total++;
-                    if(data.status === 'Pending' || data.status === 'Pending Verification') pending++;
-                    if(data.status === 'Delivered') delivered++;
-
-                    let statusClass = 'bg-gray-500';
-                    if(data.status === 'Pending Verification') statusClass = 'bg-red-500 animate-pulse text-white';
-                    if(data.status === 'Pending') statusClass = 'status-pending';
-                    if(data.status === 'Processing') statusClass = 'status-processing';
-                    if(data.status === 'Delivered') statusClass = 'status-delivered';
-
-                    // Build per-order UI with copy & message & verify buttons
-                    html += `
-                        <div class="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:bg-white/5 transition" id="order-${id}">
-                            <div class="flex-1">
-                                <div class="flex items-center gap-2 mb-1">
-                                    <span class="text-xs font-mono text-gray-500">#${data.oId}</span>
-                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase ${statusClass}">${data.status}</span>
-                                </div>
-                                <h4 class="font-bold text-lg text-inherit">${data.item}</h4>
-                                <div class="text-sm text-gray-400 flex gap-4 items-center mt-2">
-                                    <span><i class="fa-solid fa-phone text-xs"></i> <span id="phone-${id}">${data.phone}</span></span>
-                                    <button onclick="copyAdminPhone('${id}')" class="text-xs text-yellow-500 px-2 py-1 rounded border border-yellow-500/20">Copy</button>
-                                    <span class="text-yellow-500 font-bold">GHC ${data.price}</span>
-                                    ${data.harpoonConfirmed ? '<span class="text-xs px-2 py-1 rounded bg-green-600 text-white">Paid</span>' : ''}
-                                </div>
-                                <div class="text-xs text-gray-400 mt-2">User: ${data.uid || 'unknown'}</div>
-                            </div>
-                            <div class="flex gap-2 mt-4 md:mt-0">
-                                <button onclick="updateStatus('${id}', 'Pending')" class="px-3 py-1 bg-yellow-600/20 text-yellow-500 text-xs rounded border border-yellow-600/50 hover:bg-yellow-600 hover:text-white transition">Pending</button>
-                                <button onclick="verifyOrder('${id}')" class="px-3 py-1 bg-blue-600/20 text-blue-500 text-xs rounded border border-blue-600/50 hover:bg-blue-600 hover:text-white transition">Verify</button>
-                                <button onclick="updateStatus('${id}', 'Processing')" class="px-3 py-1 bg-blue-600/20 text-blue-500 text-xs rounded border border-blue-600/50 hover:bg-blue-600 hover:text-white transition">Process</button>
-                                <button onclick="deliverOrder('${id}')" class="px-3 py-1 bg-green-600/20 text-green-500 text-xs rounded border border-green-600/50 hover:bg-green-600 hover:text-white transition">Deliver</button>
-                                <button onclick="openMessageModal('${id}')" class="px-3 py-1 bg-white/10 text-white text-xs rounded border border-white/10 hover:bg-white/20 transition">Message</button>
-                                <button onclick="deleteOrder('${id}')" class="px-3 py-1 bg-red-600/20 text-red-500 text-xs rounded border border-red-600/50 hover:bg-red-600 hover:text-white transition"><i class="fa-solid fa-trash"></i></button>
-                            </div>
+            if(orders.length === 0) {
+                list.innerHTML = '<div class="p-8 text-center text-gray-500">No orders found</div>';
+                return;
+            }
+            list.innerHTML = orders.map(o => `
+                <div class="p-4 flex flex-col md:flex-row justify-between gap-4 hover:bg-white/5 transition">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3 mb-1">
+                            <span class="text-xs font-mono text-yellow-500 font-bold bg-yellow-500/10 px-2 py-0.5 rounded">#${o.ref}</span>
+                            <span class="text-[10px] text-gray-500">${new Date(o.time).toLocaleString()}</span>
                         </div>
-                    `;
-                });
+                        <h4 class="font-bold text-sm text-white">${o.product} • GHC ${o.amount}</h4>
+                        <p class="text-xs text-gray-400">Recipient: <span class="text-white font-bold">${o.recipient}</span></p>
+                        <p class="text-[10px] text-blue-400">${o.email}</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <select onchange="updateStatus('${o.id}', this.value)" class="bg-black/40 border border-white/10 text-[10px] p-2 rounded outline-none text-white">
+                            <option value="pending" ${o.status === 'pending' ? 'selected' : ''}>Pending</option>
+                            <option value="processing" ${o.status === 'processing' ? 'selected' : ''}>Processing</option>
+                            <option value="delivered" ${o.status === 'delivered' ? 'selected' : ''}>Delivered</option>
+                        </select>
+                        <button onclick="deleteOrder('${o.id}')" class="w-8 h-8 bg-red-600/20 text-red-500 rounded flex items-center justify-center hover:bg-red-600 hover:text-white transition">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
 
-                list.innerHTML = html || '<div class="p-8 text-center text-gray-500">No orders found.</div>';
+        function searchOrders(q) {
+            const filtered = allOrders.filter(o => o.ref.toLowerCase().includes(q.toLowerCase()));
+            renderAdminOrders(filtered);
+        }
 
-                document.getElementById('stat-total').innerText = total;
-                document.getElementById('stat-pending').innerText = pending;
-                document.getElementById('stat-delivered').innerText = delivered;
+        function updateStatus(id, stat) {
+            db.collection('orders').doc(id).update({ status: stat })
+            .then(() => {
+                toast(`Order marked as ${stat}`);
+                fetchOrders();
             });
-        }
-
-        // Copy phone helper
-        function copyAdminPhone(docId) {
-            if(!isAdmin()){ toast('Unauthorized'); return; }
-            const phone = document.getElementById(`phone-${docId}`).innerText;
-            navigator.clipboard.writeText(phone).then(() => toast('Phone copied'));
-        }
-
-        // Manual verify button for admin (calls Harpoon verify function)
-        function verifyOrder(docId) {
-            if(!isAdmin()){ toast('Unauthorized'); return; }
-            toast('Attempting verification...');
-            attemptHarpoonVerification(docId).then(ok => {
-                if(ok) toast('Payment verified by Harpoon.');
-                else toast('No payment found yet.');
-            });
-        }
-
-        // Deliver helper prevents delivering if not paid
-        function deliverOrder(docId) {
-            if(!isAdmin()){ toast('Unauthorized'); return; }
-            db.collection('orders').doc(docId).get().then(docSnap => {
-                if(!docSnap.exists) return toast('Order not found', 'error');
-                const data = docSnap.data();
-                if(!data.harpoonConfirmed) {
-                    // If not paid, send message to user that they should pay before delivery
-                    sendMessageToUser(data.uid, `Please make payment for order ${data.oId} before delivery can be processed.`);
-                    toast('Order not paid — user notified.');
-                    return;
-                }
-                updateStatus(docId, 'Delivered');
-            });
-        }
-
-        function updateStatus(id, status) {
-            if(!isAdmin()){ toast('Unauthorized'); return; }
-            db.collection('orders').doc(id).update({ status: status }).then(() => toast(`Order marked as ${status}`)).catch(err => toast("Error updating: " + err.message, "error"));
         }
 
         function deleteOrder(id) {
-            if(!isAdmin()){ toast('Unauthorized'); return; }
-            if(confirm('Delete this order log?')) {
-                db.collection('orders').doc(id).delete()
-                    .then(() => toast("Order deleted"))
-                    .catch(err => toast("Error: " + err.message, "error"));
-            }
+            if(!confirm("Delete this order?")) return;
+            db.collection('orders').doc(id).delete().then(() => fetchOrders());
         }
 
-        // Send a message to a user (stores in 'messages' collection)
-        function sendMessageToUser(uid, message) {
-            if(!uid || !message) return;
-            db.collection('messages').add({ uid: uid, message: message, fromAdmin: true, time: firebase.firestore.FieldValue.serverTimestamp() })
-            .then(() => toast('Message queued to user'))
-            .catch(e => toast('Error sending message', 'error'));
-        }
-
-        // Open a simple prompt to send message for a specific order (admin)
-        function openMessageModal(orderId) {
-            if(!isAdmin()){ toast('Unauthorized'); return; }
-            db.collection('orders').doc(orderId).get().then(docSnap => {
-                if(!docSnap.exists) return toast('Order not found');
-                const data = docSnap.data();
-                const msg = prompt(`Send message to user (${data.phone}) about order ${data.oId}:`);
-                if(msg) sendMessageToUser(data.uid, msg);
-            });
-        }
-
-        // Clear all orders (dangerous) - admin only
-        function clearAllOrders() {
-            if(!isAdmin()){ toast('Unauthorized'); return; }
-            if(!confirm('Are you sure? This will delete ALL orders.')) return;
-            // Batch delete (limited by Firestore batch size in real world)
-            db.collection('orders').get().then(snap => {
-                const batch = db.batch();
-                snap.forEach(doc => batch.delete(doc.ref));
-                return batch.commit();
-            }).then(() => {
-                toast('All orders cleared');
-            }).catch(e => toast('Error clearing orders', 'error'));
-        }
-
-        // Search orders by oId
-        function searchOrders(q) {
-            q = (q || '').trim();
-            if(!q) { fetchOrders(); return; }
-            const list = document.getElementById('admin-orders-list');
-            list.innerHTML = '<div class="p-8 text-center text-gray-500">Searching...</div>';
-            db.collection('orders').where('oId', '==', q).get().then(snap => {
-                if(snap.empty) return list.innerHTML = '<div class="p-8 text-center text-gray-500">No orders found.</div>';
-                let html = '';
-                snap.forEach(doc => {
-                    const data = doc.data();
-                    const id = doc.id;
-                    html += `
-                        <div class="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:bg-white/5 transition" id="order-${id}">
-                            <div class="flex-1">
-                                <div class="flex items-center gap-2 mb-1">
-                                    <span class="text-xs font-mono text-gray-500">#${data.oId}</span>
-                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase status-pending">${data.status}</span>
-                                </div>
-                                <h4 class="font-bold text-lg text-inherit">${data.item}</h4>
-                                <div class="text-sm text-gray-400 flex gap-4 items-center mt-2">
-                                    <span><i class="fa-solid fa-phone text-xs"></i> <span id="phone-${id}">${data.phone}</span></span>
-                                    <button onclick="copyAdminPhone('${id}')" class="text-xs text-yellow-500 px-2 py-1 rounded border border-yellow-500/20">Copy</button>
-                                    <span class="text-yellow-500 font-bold">GHC ${data.price}</span>
-                                </div>
-                            </div>
-                            <div class="flex gap-2 mt-4 md:mt-0">
-                                <button onclick="verifyOrder('${id}')" class="px-3 py-1 bg-blue-600/20 text-blue-500 text-xs rounded border border-blue-600/50 hover:bg-blue-600 hover:text-white transition">Verify</button>
-                                <button onclick="deliverOrder('${id}')" class="px-3 py-1 bg-green-600/20 text-green-500 text-xs rounded border border-green-600/50 hover:bg-green-600 hover:text-white transition">Deliver</button>
-                                <button onclick="openMessageModal('${id}')" class="px-3 py-1 bg-white/10 text-white text-xs rounded border border-white/10 hover:bg-white/20 transition">Message</button>
-                            </div>
-                        </div>
-                    `;
-                });
-                list.innerHTML = html;
-            });
+        async function clearAllOrders() {
+            if(!confirm("Are you sure? This will delete EVERY order in the database.")) return;
+            const snap = await db.collection('orders').get();
+            const batch = db.batch();
+            snap.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+            fetchOrders();
         }
 
         function sendBroadcast() {
-            if(!isAdmin()){ toast('Unauthorized'); return; }
             const msg = document.getElementById('broadcast-msg').value;
-            if(!msg) return toast("Write a message first!", "error");
-
-            db.collection('broadcasts').add({
-                message: msg,
-                time: firebase.firestore.FieldValue.serverTimestamp()
-            }).then(() => {
-                toast("Broadcast sent successfully");
-                document.getElementById('broadcast-msg').value = '';
-            }).catch(e => toast('Error sending broadcast', 'error'));
-        }
-
-        // CHATBOT
-        function toggleBot() {
-            const ui = document.getElementById('bot-ui');
-            ui.classList.toggle('hidden');
-            if(!ui.classList.contains('hidden')) sendBot("Hello! How do I buy data?");
-        }
-
-        function sendBot(text) {
-            const box = document.getElementById('chat-box');
-            const input = document.getElementById('bot-input');
-            const msg = text || input.value;
             if(!msg) return;
+            db.collection('notifications').add({
+                message: msg,
+                time: Date.now(),
+                type: 'broadcast'
+            }).then(() => {
+                toast("Broadcast sent!");
+                document.getElementById('broadcast-msg').value = '';
+            });
+        }
 
-            box.innerHTML += `<div class="text-right"><span class="bg-yellow-600 text-black px-3 py-2 rounded-2xl rounded-tr-none inline-block">${msg}</span></div>`;
-            if(input) input.value = '';
+        function initNotifications() {
+            db.collection('notifications').orderBy('time', 'desc').limit(5).onSnapshot(snap => {
+                const list = document.getElementById('notif-list');
+                const dot = document.getElementById('notif-dot');
+                if(snap.empty) return;
+                
+                dot.classList.remove('hidden');
+                list.innerHTML = '';
+                snap.forEach(doc => {
+                    const n = doc.data();
+                    list.innerHTML += `
+                        <div class="p-3 bg-white/5 rounded-xl border border-white/10 mb-2">
+                            <p class="text-xs text-white leading-relaxed">${n.message}</p>
+                            <p class="text-[9px] text-gray-500 mt-1">${new Date(n.time).toLocaleTimeString()}</p>
+                        </div>
+                    `;
+                });
+            });
+        }
 
+        function toggleNotifications() {
+            const p = document.getElementById('notif-panel');
+            p.classList.toggle('hidden');
+            document.getElementById('notif-dot').classList.add('hidden');
+        }
+
+        function toggleBot() { document.getElementById('bot-ui').classList.toggle('hidden'); }
+        function sendBot() {
+            const i = document.getElementById('bot-input'), b = document.getElementById('chat-box');
+            if(!i.value) return;
+            b.innerHTML += `<div class="text-right"><span class="bg-yellow-500 text-black px-3 py-2 rounded-2xl rounded-tr-none inline-block">${i.value}</span></div>`;
+            const q = i.value.toLowerCase(); i.value = '';
+            let r = "I'm not sure about that. Please contact support via the headset icon.";
+            if(q.includes('price')) r = "Our bundles start from GHC 6 for 1GB up to GHC 60 for 10GB.";
+            if(q.includes('how to')) r = "Select a bundle, enter recipient number, pay via MoMo, and click 'I Have Sent Money'.";
+            if(q.includes('time') || q.includes('long')) r = "Delivery usually takes 30 mins to 1 hour.";
             setTimeout(() => {
-                let r = "Please contact our human support for detailed queries.";
-                if(msg.toLowerCase().includes('buy')) r = "Select a bundle, enter your number, and finalize via WhatsApp!";
-                if(msg.toLowerCase().includes('group')) r = "Join our official community using the green button at the top!";
-                if(msg.toLowerCase().includes('cart')) r = "Click the basket icon at the top to view your items.";
-                box.innerHTML += `<div class="text-left"><span class="bg-white/10 text-white px-3 py-2 rounded-2xl rounded-tl-none inline-block">${r}</span></div>`;
-                box.scrollTop = box.scrollHeight;
+                b.innerHTML += `<div><span class="bg-white/10 text-white px-3 py-2 rounded-2xl rounded-tl-none inline-block">${r}</span></div>`;
+                b.scrollTop = b.scrollHeight;
             }, 600);
         }
 
         function startHelp() {
-            toast("Tutorial: 1. Pick Bundle 2. Confirm Number 3. Pay via MoMo");
+            const steps = [
+                "Welcome! Here's how to use LUXE DATASTORE.",
+                "1. Choose your preferred Data Bundle.",
+                "2. Enter the recipient's phone number accurately.",
+                "3. Pay the EXACT amount shown to our MoMo number.",
+                "4. Use the provided Reference ID during payment.",
+                "5. Once paid, click 'I HAVE SENT THE MONEY' to notify us."
+            ];
+            let i = 0;
+            const b = document.getElementById('chat-box');
+            document.getElementById('bot-ui').classList.remove('hidden');
+            const interval = setInterval(() => {
+                b.innerHTML += `<div><span class="bg-white/10 text-white px-3 py-2 rounded-2xl rounded-tl-none inline-block">${steps[i]}</span></div>`;
+                b.scrollTop = b.scrollHeight;
+                i++;
+                if(i >= steps.length) clearInterval(interval);
+            }, 1000);
         }
-
     </script>
 </body>
 </html>
