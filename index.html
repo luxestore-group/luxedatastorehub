@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>LUXE DATASTORE | Official</title>
-    
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -42,14 +42,14 @@
             border: 1px solid rgba(0, 0, 0, 0.05);
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
         }
-        
+
         body.light-mode .text-gray-400 { color: #555; }
-        body.light-mode .text-white { color: #000; } 
-        body.light-mode .btn-premium, 
-        body.light-mode .wa-pulse, 
+        body.light-mode .text-white { color: #000; }
+        body.light-mode .btn-premium,
+        body.light-mode .wa-pulse,
         body.light-mode .bg-red-600,
         body.light-mode .bg-green-600 { color: #000; }
-        
+
         body.light-mode .bg-white\/5 { background-color: rgba(0,0,0,0.05); }
         body.light-mode .bg-white\/10 { background-color: rgba(0,0,0,0.1); }
         body.light-mode .border-white\/10 { border-color: rgba(0,0,0,0.1); }
@@ -119,12 +119,12 @@
             from { transform: translateY(30px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
         }
-        
+
         /* STATUS BADGES */
         .status-pending { background: #eab308; color: black; }
         .status-processing { background: #3b82f6; color: white; }
         .status-delivered { background: #22c55e; color: white; }
-        
+
         /* COPY SUCCESS ANIMATION */
         .copy-flash {
             color: #4ade80 !important;
@@ -174,7 +174,7 @@
                 <button onclick="toggleTheme()" class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/20 transition">
                     <i id="theme-icon" class="fa-solid fa-moon text-yellow-500"></i>
                 </button>
-                
+
                 <div class="relative cursor-pointer" onclick="toggleNotifications()">
                     <i class="fa-solid fa-bell text-gray-400 hover:text-white transition text-lg"></i>
                     <span id="notif-dot" class="absolute -top-1 -right-1 bg-red-600 w-2.5 h-2.5 rounded-full hidden border border-black"></span>
@@ -185,12 +185,12 @@
                 </div>
 
                 <button id="admin-btn" onclick="openAdmin()" class="hidden bg-red-600 text-[10px] font-bold px-3 py-1 rounded text-white shadow-lg hover:bg-red-700 transition">ADMIN</button>
-                
+
                 <div class="relative cursor-pointer hover:scale-110 transition" onclick="showCart()">
                     <i class="fa-solid fa-basket-shopping text-xl text-gray-400"></i>
                     <span id="cart-count" class="absolute -top-2 -right-2 bg-yellow-500 text-black text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center hidden">0</span>
                 </div>
-                
+
                 <button onclick="logout()"><i class="fa-solid fa-power-off text-gray-500 hover:text-red-500 transition"></i></button>
             </div>
         </nav>
@@ -221,7 +221,7 @@
         <div class="px-6 pb-24">
             <h2 class="text-center text-gray-400 text-xs uppercase tracking-[0.5em] mb-8">Premium Bundles</h2>
             <div id="bundle-grid" class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                </div>
+            </div>
         </div>
 
         <div class="fixed bottom-6 right-6 flex flex-col gap-4 z-[100]">
@@ -337,7 +337,7 @@
                 <h3 class="text-2xl font-bold shimmer">My Bag</h3>
                 <button onclick="clearCart()" class="text-red-500 text-xs uppercase font-bold">Clear All</button>
             </div>
-            
+
             <div id="cart-items-list" class="flex-1 overflow-y-auto space-y-3 mb-6 pr-2">
             </div>
 
@@ -363,7 +363,7 @@
     <div id="payment-modal" class="fixed inset-0 bg-black/95 backdrop-blur-md z-[220] hidden flex items-center justify-center p-4">
         <div class="glass-card p-6 rounded-3xl w-full max-w-md animate-up border border-yellow-500/20 relative">
             <div class="absolute top-4 right-4 text-red-500 font-bold bg-white/10 px-3 py-1 rounded-lg" id="timer">10:00</div>
-            
+
             <h3 class="text-xl font-bold shimmer mb-2">Complete Payment</h3>
             <p class="text-xs text-gray-400 mb-6">Send exact amount to the account below.</p>
 
@@ -437,8 +437,12 @@
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
+
+        // ADMIN UID (only this UID can see/control admin dashboard)
         const ADMIN_ID = "VuJUYF69VCUBzo0y5mnrkAGgBqj1";
-        
+        // Helper to ensure only the designated admin UID can access admin functions
+        function isAdmin(){ return currentUser && currentUser.uid === ADMIN_ID; }
+
         // HARPOON CONFIG - YOU MUST SET THE CORRECT HARPOON VERIFY ENDPOINT
         const HARPOON_API_KEY = "hpn_live_sk_spUhtbnQoB2WKaOIKpfqC8pxVRuBXxFK"; // keep secret server-side ideally
         const HARPOON_VERIFY_URL = "https://api.harpoonpay.com/v1/transactions/verify"; // <-- replace with real endpoint if different
@@ -457,13 +461,13 @@
             { id: 9, name: '9GB', price: 54, hot: false },
             { id: 5, name: '10GB', price: 60, hot: false }
         ];
-        
+
         let cart = [];
         let activeProduct = null;
         let cSum = 0;
         let isDarkMode = true;
         let currentUser = null;
-        
+
         // PAYMENT STATE
         let currentOrderData = null;
         let timerInterval = null;
@@ -473,7 +477,7 @@
             isDarkMode = !isDarkMode;
             const body = document.body;
             const icon = document.getElementById('theme-icon');
-            
+
             if (!isDarkMode) {
                 body.classList.add('light-mode');
                 icon.classList.remove('fa-moon');
@@ -505,6 +509,8 @@
                 initNotifications(); // Start listening for updates
                 if(user.uid === ADMIN_ID) {
                     document.getElementById('admin-btn').classList.remove('hidden');
+                } else {
+                    document.getElementById('admin-btn').classList.add('hidden');
                 }
             } else {
                 document.getElementById('auth-page').classList.remove('hidden');
@@ -711,10 +717,10 @@
 
         function showCart() {
             if(cart.length === 0) return toast("Your cart is empty!", "error");
-            
+
             const list = document.getElementById('cart-items-list');
             let total = 0;
-            
+
             list.innerHTML = cart.map((item, index) => {
                 total += item.price;
                 return `
@@ -741,7 +747,7 @@
                 closeModals();
                 toast("Cart cleared");
             } else {
-                showCart(); 
+                showCart();
             }
         }
 
@@ -762,11 +768,10 @@
         // ==========================================
         // NEW PAYMENT SYSTEM (HARPOON MANUAL)
         // ==========================================
-        
         function proceedToPayment(source) {
             let phoneInputId = source === 'single' ? 'order-phone' : 'cart-phone';
             const phone = document.getElementById(phoneInputId).value;
-            
+
             if(!phone || phone.length < 10) return toast("Enter valid phone number", "error");
 
             let total = 0;
@@ -813,7 +818,7 @@
             let timer = duration, minutes, seconds;
             const display = document.getElementById('timer');
             clearInterval(timerInterval);
-            
+
             timerInterval = setInterval(function () {
                 minutes = parseInt(timer / 60, 10);
                 seconds = parseInt(timer % 60, 10);
@@ -984,10 +989,10 @@
         // ==========================================
         // ADMIN FUNCTIONALITY
         // ==========================================
-        
         let adminListener = null;
 
         function openAdmin() {
+            if(!isAdmin()){ toast('Unauthorized'); return; }
             document.getElementById('admin-dashboard').classList.remove('hidden');
             fetchOrders();
             startHarpoonPolling();
@@ -995,14 +1000,15 @@
 
         function closeAdmin() {
             document.getElementById('admin-dashboard').classList.add('hidden');
-            if(adminListener) adminListener(); 
+            if(adminListener) adminListener();
             stopHarpoonPolling();
         }
 
         function fetchOrders() {
+            if(!isAdmin()){ toast('Unauthorized'); return; }
             const list = document.getElementById('admin-orders-list');
             if(adminListener) adminListener(); // unsubscribe previous
-            
+
             adminListener = db.collection('orders').orderBy('time', 'desc').limit(200).onSnapshot(snapshot => {
                 let html = '';
                 let total = 0;
@@ -1052,7 +1058,7 @@
                 });
 
                 list.innerHTML = html || '<div class="p-8 text-center text-gray-500">No orders found.</div>';
-                
+
                 document.getElementById('stat-total').innerText = total;
                 document.getElementById('stat-pending').innerText = pending;
                 document.getElementById('stat-delivered').innerText = delivered;
@@ -1061,12 +1067,14 @@
 
         // Copy phone helper
         function copyAdminPhone(docId) {
+            if(!isAdmin()){ toast('Unauthorized'); return; }
             const phone = document.getElementById(`phone-${docId}`).innerText;
             navigator.clipboard.writeText(phone).then(() => toast('Phone copied'));
         }
 
         // Manual verify button for admin (calls Harpoon verify function)
         function verifyOrder(docId) {
+            if(!isAdmin()){ toast('Unauthorized'); return; }
             toast('Attempting verification...');
             attemptHarpoonVerification(docId).then(ok => {
                 if(ok) toast('Payment verified by Harpoon.');
@@ -1076,6 +1084,7 @@
 
         // Deliver helper prevents delivering if not paid
         function deliverOrder(docId) {
+            if(!isAdmin()){ toast('Unauthorized'); return; }
             db.collection('orders').doc(docId).get().then(docSnap => {
                 if(!docSnap.exists) return toast('Order not found', 'error');
                 const data = docSnap.data();
@@ -1090,10 +1099,12 @@
         }
 
         function updateStatus(id, status) {
+            if(!isAdmin()){ toast('Unauthorized'); return; }
             db.collection('orders').doc(id).update({ status: status }).then(() => toast(`Order marked as ${status}`)).catch(err => toast("Error updating: " + err.message, "error"));
         }
 
         function deleteOrder(id) {
+            if(!isAdmin()){ toast('Unauthorized'); return; }
             if(confirm('Delete this order log?')) {
                 db.collection('orders').doc(id).delete()
                     .then(() => toast("Order deleted"))
@@ -1111,6 +1122,7 @@
 
         // Open a simple prompt to send message for a specific order (admin)
         function openMessageModal(orderId) {
+            if(!isAdmin()){ toast('Unauthorized'); return; }
             db.collection('orders').doc(orderId).get().then(docSnap => {
                 if(!docSnap.exists) return toast('Order not found');
                 const data = docSnap.data();
@@ -1121,6 +1133,7 @@
 
         // Clear all orders (dangerous) - admin only
         function clearAllOrders() {
+            if(!isAdmin()){ toast('Unauthorized'); return; }
             if(!confirm('Are you sure? This will delete ALL orders.')) return;
             // Batch delete (limited by Firestore batch size in real world)
             db.collection('orders').get().then(snap => {
@@ -1144,16 +1157,37 @@
                 snap.forEach(doc => {
                     const data = doc.data();
                     const id = doc.id;
-                    html += `\n                        <div class="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:bg-white/5 transition" id="order-${id}">\n                            <div class="flex-1">\n                                <div class="flex items-center gap-2 mb-1">\n                                    <span class="text-xs font-mono text-gray-500">#${data.oId}</span>\n                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase status-pending">${data.status}</span>\n                                </div>\n                                <h4 class="font-bold text-lg text-inherit">${data.item}</h4>\n                                <div class="text-sm text-gray-400 flex gap-4 items-center mt-2">\n                                    <span><i class="fa-solid fa-phone text-xs"></i> <span id="phone-${id}">${data.phone}</span></span>\n                                    <button onclick="copyAdminPhone('${id}')" class="text-xs text-yellow-500 px-2 py-1 rounded border border-yellow-500/20">Copy</button>\n                                    <span class="text-yellow-500 font-bold">GHC ${data.price}</span>\n                                </div>\n                            </div>\n                            <div class="flex gap-2 mt-4 md:mt-0">\n                                <button onclick="verifyOrder('${id}')" class="px-3 py-1 bg-blue-600/20 text-blue-500 text-xs rounded border border-blue-600/50 hover:bg-blue-600 hover:text-white transition">Verify</button>\n                                <button onclick="deliverOrder('${id}')" class="px-3 py-1 bg-green-600/20 text-green-500 text-xs rounded border border-green-600/50 hover:bg-green-600 hover:text-white transition">Deliver</button>\n                                <button onclick="openMessageModal('${id}')" class="px-3 py-1 bg-white/10 text-white text-xs rounded border border-white/10 hover:bg-white/20 transition">Message</button>\n                            </div>\n                        </div>\n                    `;
+                    html += `
+                        <div class="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:bg-white/5 transition" id="order-${id}">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-xs font-mono text-gray-500">#${data.oId}</span>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase status-pending">${data.status}</span>
+                                </div>
+                                <h4 class="font-bold text-lg text-inherit">${data.item}</h4>
+                                <div class="text-sm text-gray-400 flex gap-4 items-center mt-2">
+                                    <span><i class="fa-solid fa-phone text-xs"></i> <span id="phone-${id}">${data.phone}</span></span>
+                                    <button onclick="copyAdminPhone('${id}')" class="text-xs text-yellow-500 px-2 py-1 rounded border border-yellow-500/20">Copy</button>
+                                    <span class="text-yellow-500 font-bold">GHC ${data.price}</span>
+                                </div>
+                            </div>
+                            <div class="flex gap-2 mt-4 md:mt-0">
+                                <button onclick="verifyOrder('${id}')" class="px-3 py-1 bg-blue-600/20 text-blue-500 text-xs rounded border border-blue-600/50 hover:bg-blue-600 hover:text-white transition">Verify</button>
+                                <button onclick="deliverOrder('${id}')" class="px-3 py-1 bg-green-600/20 text-green-500 text-xs rounded border border-green-600/50 hover:bg-green-600 hover:text-white transition">Deliver</button>
+                                <button onclick="openMessageModal('${id}')" class="px-3 py-1 bg-white/10 text-white text-xs rounded border border-white/10 hover:bg-white/20 transition">Message</button>
+                            </div>
+                        </div>
+                    `;
                 });
                 list.innerHTML = html;
             });
         }
 
         function sendBroadcast() {
+            if(!isAdmin()){ toast('Unauthorized'); return; }
             const msg = document.getElementById('broadcast-msg').value;
             if(!msg) return toast("Write a message first!", "error");
-            
+
             db.collection('broadcasts').add({
                 message: msg,
                 time: firebase.firestore.FieldValue.serverTimestamp()
