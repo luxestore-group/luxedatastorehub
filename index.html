@@ -124,6 +124,12 @@
         .status-pending { background: #eab308; color: black; }
         .status-processing { background: #3b82f6; color: white; }
         .status-delivered { background: #22c55e; color: white; }
+        
+        /* COPY SUCCESS ANIMATION */
+        .copy-flash {
+            color: #4ade80 !important;
+            transform: scale(1.2);
+        }
     </style>
 </head>
 <body class="min-h-screen">
@@ -266,9 +272,13 @@
                     <h1 class="text-3xl font-black shimmer">ADMIN DASHBOARD</h1>
                     <p class="text-gray-400 text-xs uppercase tracking-widest">Workflow Management</p>
                 </div>
-                <button onclick="closeAdmin()" class="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl transition">
-                    <i class="fa-solid fa-times mr-2"></i> Close
-                </button>
+                <div class="flex items-center gap-4">
+                    <input id="admin-search" oninput="searchOrders(this.value)" type="text" placeholder="Search order id e.g. LX-12345" class="bg-white/5 rounded-xl p-2 outline-none text-sm border border-white/10" />
+                    <button onclick="clearAllOrders()" class="text-xs bg-red-600/20 text-red-500 px-3 py-2 rounded hover:bg-red-600 hover:text-white transition">Clear All Orders</button>
+                    <button onclick="closeAdmin()" class="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl transition">
+                        <i class="fa-solid fa-times mr-2"></i> Close
+                    </button>
+                </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -308,14 +318,14 @@
 
     <div id="order-modal" class="fixed inset-0 bg-black/95 backdrop-blur-md z-[200] hidden flex items-center justify-center p-6">
         <div class="glass-card p-8 rounded-3xl w-full max-w-sm animate-up">
-            <h3 class="text-2xl font-bold shimmer mb-6 text-center">Checkout</h3>
+            <h3 class="text-2xl font-bold shimmer mb-6 text-center">Recipient Details</h3>
             <div id="order-info" class="bg-white/5 p-4 rounded-2xl mb-6 border border-white/10 text-inherit"></div>
             <div class="mb-6">
                 <label class="text-[10px] uppercase text-gray-500 ml-1">Recipient Number</label>
                 <input type="tel" id="order-phone" placeholder="05XXXXXXXX" class="w-full bg-black/50 border border-white/10 p-4 rounded-xl text-yellow-500 font-bold focus:border-yellow-500 outline-none">
             </div>
-            <button onclick="finalizeOrder()" class="w-full btn-premium p-4 rounded-xl flex items-center justify-center gap-2">
-                ORDER ON WHATSAPP <i class="fa-brands fa-whatsapp text-lg"></i>
+            <button id="confirm-pay-btn" onclick="proceedToPayment('single')" class="w-full btn-premium p-4 rounded-xl flex items-center justify-center gap-2">
+                PROCEED TO PAY <i class="fa-solid fa-arrow-right"></i>
             </button>
             <button onclick="closeModals()" class="w-full mt-4 text-gray-500 text-sm py-2">Go Back</button>
         </div>
@@ -343,10 +353,62 @@
                 <input type="tel" id="cart-phone" placeholder="05XXXXXXXX" class="w-full bg-black/50 border border-white/10 p-4 rounded-xl text-yellow-500 font-bold focus:border-yellow-500 outline-none">
             </div>
 
-            <button onclick="checkoutCart()" class="w-full btn-premium p-4 rounded-xl flex items-center justify-center gap-2">
-                CONFIRM PURCHASE <i class="fa-solid fa-check-circle"></i>
+            <button onclick="proceedToPayment('cart')" class="w-full btn-premium p-4 rounded-xl flex items-center justify-center gap-2">
+                PROCEED TO PAY <i class="fa-solid fa-arrow-right"></i>
             </button>
             <button onclick="closeModals()" class="w-full mt-4 text-gray-500 text-sm py-2">Continue Shopping</button>
+        </div>
+    </div>
+
+    <div id="payment-modal" class="fixed inset-0 bg-black/95 backdrop-blur-md z-[220] hidden flex items-center justify-center p-4">
+        <div class="glass-card p-6 rounded-3xl w-full max-w-md animate-up border border-yellow-500/20 relative">
+            <div class="absolute top-4 right-4 text-red-500 font-bold bg-white/10 px-3 py-1 rounded-lg" id="timer">10:00</div>
+            
+            <h3 class="text-xl font-bold shimmer mb-2">Complete Payment</h3>
+            <p class="text-xs text-gray-400 mb-6">Send exact amount to the account below.</p>
+
+            <div class="space-y-4 mb-6">
+                <div class="bg-white/5 p-3 rounded-xl flex justify-between items-center border border-white/10">
+                    <div>
+                        <p class="text-[10px] text-gray-500 uppercase">Account Name</p>
+                        <p class="font-bold text-white text-sm" id="pay-name">ASANTE JUDE OSEI</p>
+                    </div>
+                    <button onclick="copyToClip('ASANTE JUDE OSEI', this)" class="text-yellow-500 p-2"><i class="fa-regular fa-copy"></i></button>
+                </div>
+
+                <div class="bg-white/5 p-3 rounded-xl flex justify-between items-center border border-white/10">
+                    <div>
+                        <p class="text-[10px] text-gray-500 uppercase">MoMo Number</p>
+                        <p class="font-bold text-yellow-400 text-xl tracking-wider" id="pay-number">0548164533</p>
+                    </div>
+                    <button onclick="copyToClip('0548164533', this)" class="text-yellow-500 p-2"><i class="fa-regular fa-copy"></i></button>
+                </div>
+
+                <div class="bg-white/5 p-3 rounded-xl flex justify-between items-center border border-white/10">
+                    <div>
+                        <p class="text-[10px] text-gray-500 uppercase">Amount to Send</p>
+                        <p class="font-bold text-white text-lg" id="pay-amount">GHC 0.00</p>
+                    </div>
+                    <button onclick="copyToClipAmount(this)" class="text-yellow-500 p-2"><i class="fa-regular fa-copy"></i></button>
+                </div>
+
+                <div class="bg-blue-900/20 p-3 rounded-xl flex justify-between items-center border border-blue-500/30">
+                    <div>
+                        <p class="text-[10px] text-blue-400 uppercase font-bold">Reference ID (Required)</p>
+                        <p class="font-mono text-white text-sm" id="pay-ref">...</p>
+                    </div>
+                    <button onclick="copyToClipRef(this)" class="text-blue-400 p-2"><i class="fa-regular fa-copy"></i></button>
+                </div>
+            </div>
+
+            <a href="tel:*170%23" class="block w-full bg-white/10 hover:bg-white/20 text-center py-3 rounded-xl mb-4 text-sm font-bold transition border border-white/10">
+                <i class="fa-solid fa-phone mr-2"></i> Dial *170#
+            </a>
+
+            <button id="i-paid-btn" onclick="confirmPayment()" class="w-full btn-premium p-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-yellow-500/20">
+                I HAVE SENT THE MONEY <i class="fa-solid fa-check-double"></i>
+            </button>
+            <button onclick="closeModals()" class="w-full mt-4 text-gray-500 text-xs text-center hover:text-white">Cancel Transaction</button>
         </div>
     </div>
 
@@ -376,6 +438,12 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
         const ADMIN_ID = "VuJUYF69VCUBzo0y5mnrkAGgBqj1";
+        
+        // HARPOON CONFIG - YOU MUST SET THE CORRECT HARPOON VERIFY ENDPOINT
+        const HARPOON_API_KEY = "hpn_live_sk_spUhtbnQoB2WKaOIKpfqC8pxVRuBXxFK"; // keep secret server-side ideally
+        const HARPOON_VERIFY_URL = "https://api.harpoonpay.com/v1/transactions/verify"; // <-- replace with real endpoint if different
+        const PAYMENT_NUMBER = "0548164533";
+        const ACCOUNT_NAME = "ASANTE JUDE OSEI";
 
         // APP DATA
         const bundles = [
@@ -395,6 +463,10 @@
         let cSum = 0;
         let isDarkMode = true;
         let currentUser = null;
+        
+        // PAYMENT STATE
+        let currentOrderData = null;
+        let timerInterval = null;
 
         // THEME LOGIC
         function toggleTheme() {
@@ -517,12 +589,10 @@
             const dot = document.getElementById('notif-dot');
             const list = document.getElementById('notif-list');
 
-            // 1. Listen for User's Orders changing status
             db.collection('orders').where('uid', '==', currentUser.uid).limit(10).onSnapshot(snap => {
                 let updates = [];
                 snap.forEach(doc => {
                     const d = doc.data();
-                    // If order is active/recent
                     updates.push({
                         type: 'order',
                         msg: `Order #${d.oId} is ${d.status}`,
@@ -533,7 +603,6 @@
                 renderNotifications(updates);
             });
 
-            // 2. Listen for Broadcasts
             db.collection('broadcasts').orderBy('time', 'desc').limit(5).onSnapshot(snap => {
                 let broadcasts = [];
                 snap.forEach(doc => {
@@ -543,8 +612,7 @@
                         time: doc.data().time.seconds
                     });
                 });
-                // Merge logic handled in render
-                window.currentBroadcasts = broadcasts; // Quick hack to share state
+                window.currentBroadcasts = broadcasts;
             });
         }
 
@@ -577,7 +645,6 @@
 
         function toggleNotifications() {
             document.getElementById('notif-panel').classList.toggle('hidden');
-            // Hide dot when opened
             if(!document.getElementById('notif-panel').classList.contains('hidden')) {
                 document.getElementById('notif-dot').classList.add('hidden');
             }
@@ -685,65 +752,234 @@
             toast("Cart cleared");
         }
 
-        function checkoutCart() {
-            const phone = document.getElementById('cart-phone').value;
-            if(phone.length < 10) return toast("Enter valid phone number", "error");
-
-            let total = 0;
-            const items = cart.map(i => {
-                total += i.price;
-                return i.name;
-            }).join(', ');
-            
-            const oId = 'CART-' + Math.floor(Math.random()*90000 + 10000);
-            
-            // Added UID for history
-            db.collection('orders').add({ 
-                oId, 
-                uid: currentUser.uid,
-                item: items, 
-                price: total, 
-                phone, 
-                type: 'Bulk Cart',
-                status: 'Pending', 
-                time: firebase.firestore.FieldValue.serverTimestamp() 
-            });
-
-            const msg = `*LUXE BULK ORDER*%0A*ID:* ${oId}%0A*Bundles:* ${items}%0A*Phone:* ${phone}%0A*Total:* GHC ${total}%0A%0APlease process these items.`;
-            window.open(`https://wa.me/233548164533?text=${msg}`, '_blank');
-            
-            cart = []; 
-            updateCartCount();
-            closeModals();
-            toast("Redirecting to WhatsApp...");
-        }
-
-        function finalizeOrder() {
-            const phone = document.getElementById('order-phone').value;
-            if(phone.length < 10) return toast("Enter valid phone", "error");
-            
-            const oId = 'LX-' + Math.floor(Math.random()*90000 + 10000);
-            // Added UID for history
-            db.collection('orders').add({ 
-                oId, 
-                uid: currentUser.uid,
-                item: activeProduct.name, 
-                price: activeProduct.price, 
-                phone, 
-                status: 'Pending', 
-                time: firebase.firestore.FieldValue.serverTimestamp() 
-            });
-
-            const msg = `*LUXE ORDER REQUEST*%0A*ID:* ${oId}%0A*Bundle:* ${activeProduct.name}%0A*Phone:* ${phone}%0A*Total:* GHC ${activeProduct.price}%0A%0APlease process this order.`;
-            window.open(`https://wa.me/233548164533?text=${msg}`, '_blank');
-            closeModals();
-            toast("Redirecting to WhatsApp...");
-        }
-
         function closeModals() {
             document.getElementById('order-modal').classList.add('hidden');
             document.getElementById('cart-modal').classList.add('hidden');
+            document.getElementById('payment-modal').classList.add('hidden');
+            clearInterval(timerInterval);
         }
+
+        // ==========================================
+        // NEW PAYMENT SYSTEM (HARPOON MANUAL)
+        // ==========================================
+        
+        function proceedToPayment(source) {
+            let phoneInputId = source === 'single' ? 'order-phone' : 'cart-phone';
+            const phone = document.getElementById(phoneInputId).value;
+            
+            if(!phone || phone.length < 10) return toast("Enter valid phone number", "error");
+
+            let total = 0;
+            let items = "";
+            let oId = 'LX-' + Math.floor(Math.random()*90000 + 10000); // PERMANENT ID
+
+            if(source === 'single') {
+                total = activeProduct.price;
+                items = activeProduct.name;
+            } else {
+                cart.forEach(i => total += i.price);
+                items = cart.map(i => i.name).join(', ');
+                oId = 'CART-' + Math.floor(Math.random()*90000 + 10000); // PERMANENT ID
+            }
+
+            // Store Current Order Data State
+            currentOrderData = {
+                oId: oId, // Persistent Ref ID
+                uid: currentUser.uid,
+                item: items,
+                price: total,
+                phone: phone,
+                status: 'Pending Verification', // Waiting for manual check
+                harpoonConfirmed: false,
+                time: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            // Populate Payment Modal
+            document.getElementById('pay-amount').innerText = `GHC ${total}`;
+            document.getElementById('pay-ref').innerText = oId;
+            document.getElementById('pay-number').innerText = PAYMENT_NUMBER;
+            document.getElementById('pay-name').innerText = ACCOUNT_NAME;
+
+            // Switch Modals
+            document.getElementById('order-modal').classList.add('hidden');
+            document.getElementById('cart-modal').classList.add('hidden');
+            document.getElementById('payment-modal').classList.remove('hidden');
+
+            // Start Timer
+            startTimer(10 * 60);
+        }
+
+        function startTimer(duration) {
+            let timer = duration, minutes, seconds;
+            const display = document.getElementById('timer');
+            clearInterval(timerInterval);
+            
+            timerInterval = setInterval(function () {
+                minutes = parseInt(timer / 60, 10);
+                seconds = parseInt(timer % 60, 10);
+
+                minutes = minutes < 10 ? "0" + minutes : minutes;
+                seconds = seconds < 10 ? "0" + seconds : seconds;
+
+                display.textContent = minutes + ":" + seconds;
+
+                if (--timer < 0) {
+                    clearInterval(timerInterval);
+                    display.textContent = "EXPIRED";
+                    display.classList.add('text-red-700');
+                }
+            }, 1000);
+        }
+
+        function copyToClip(text, btn) {
+            navigator.clipboard.writeText(text);
+            const icon = btn.querySelector('i');
+            icon.classList.remove('fa-copy');
+            icon.classList.add('fa-check', 'copy-flash');
+            setTimeout(() => {
+                icon.classList.remove('fa-check', 'copy-flash');
+                icon.classList.add('fa-copy');
+            }, 1000);
+            toast("Copied to clipboard");
+        }
+
+        function copyToClipAmount(btn) {
+            const amount = document.getElementById('pay-amount').innerText.replace('GHC ', '');
+            copyToClip(amount, btn);
+        }
+
+        function copyToClipRef(btn) {
+            const ref = document.getElementById('pay-ref').innerText;
+            copyToClip(ref, btn);
+        }
+
+        // confirmPayment now uses a deterministic doc id (oId) to avoid duplicates
+        // it will prevent re-submission for the same order unless the existing order is Delivered
+        function confirmPayment() {
+            if(!currentOrderData) return;
+
+            const orderRef = db.collection('orders').doc(currentOrderData.oId);
+
+            // Disable button to prevent double clicks while processing
+            const btn = document.getElementById('i-paid-btn');
+            btn.disabled = true;
+            btn.classList.add('opacity-60', 'cursor-not-allowed');
+
+            orderRef.get().then(docSnap => {
+                if(docSnap.exists) {
+                    const data = docSnap.data();
+                    // If the order is already recorded and not delivered, we stop duplicate submissions
+                    if(data.status && data.status !== 'Delivered') {
+                        toast('Order already recorded. Await admin confirmation.');
+                        btn.disabled = false;
+                        btn.classList.remove('opacity-60', 'cursor-not-allowed');
+                        return Promise.reject('duplicate');
+                    }
+                }
+
+                // Save (overwrite if previously delivered) with our canonical id
+                return orderRef.set(currentOrderData);
+            }).then(() => {
+                // Send assurance message to buyer (short) and open WhatsApp for manual confirmation
+                const msg = `*PAYMENT SENT*%0A*Ref ID:* ${currentOrderData.oId}%0A*Bundles:* ${currentOrderData.item}%0A*Phone:* ${currentOrderData.phone}%0A*Amount:* GHC ${currentOrderData.price}%0A%0AI have sent the money manually to ${PAYMENT_NUMBER}. Please verify and approve.`;
+
+                // Clear cart if cart order
+                if(currentOrderData.oId.startsWith('CART')) {
+                    cart = [];
+                    updateCartCount();
+                }
+
+                closeModals();
+
+                // show short assurance to user
+                toast('Thanks — we recorded your payment. Delivery will be processed once payment is verified.');
+
+                // Open whatsapp as secondary confirmation
+                window.open(`https://wa.me/233548164533?text=${msg}`, '_blank');
+
+                // Trigger a verification attempt (non-blocking): will update order when Harpoon confirms
+                attemptHarpoonVerification(currentOrderData.oId).catch(e => console.warn('Harpoon check deferred', e));
+            }).catch(err => {
+                if(err !== 'duplicate') {
+                    toast('Error processing order: ' + (err.message || err), 'error');
+                }
+            }).finally(() => {
+                btn.disabled = false;
+                btn.classList.remove('opacity-60', 'cursor-not-allowed');
+            });
+        }
+
+        // ==========================================
+        // HARPOON VERIFICATION (simple polling / manual verify)
+        // ==========================================
+        // NOTE: Harpoon secret keys should be called from a secure server — this implementation
+        // attempts verification from the client as a convenience but you should move it server-side
+        // for production. Replace HARPOON_VERIFY_URL with your actual Harpoon verification endpoint.
+
+        async function attemptHarpoonVerification(oId) {
+            try {
+                if(!HARPOON_VERIFY_URL) throw new Error('No HARPOON_VERIFY_URL set');
+
+                // Fetch the order doc to get amount/phone
+                const docSnap = await db.collection('orders').doc(oId).get();
+                if(!docSnap.exists) throw new Error('Order not found');
+                const order = docSnap.data();
+
+                // Example: call Harpoon API to verify by reference or by amount/number (customize for your setup)
+                const payload = {
+                    reference: oId,
+                    amount: order.price,
+                    phone: order.phone
+                };
+
+                // Try to call Harpoon verify endpoint
+                const res = await fetch(HARPOON_VERIFY_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${HARPOON_API_KEY}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if(!res.ok) {
+                    // If the verification endpoint isn't available or returns 404/401, just exit silently
+                    console.warn('Harpoon verification returned', res.status);
+                    return false;
+                }
+
+                const data = await res.json();
+
+                // The response shape will depend on Harpoon's API. Expect something like { confirmed: true, tx_ref: '...' }
+                if(data && data.confirmed) {
+                    // Mark the order as confirmed and update status so admin sees it
+                    await db.collection('orders').doc(oId).update({ harpoonConfirmed: true, status: 'Processing', harpoonData: data, verifiedAt: firebase.firestore.FieldValue.serverTimestamp() });
+                    // send broadcast/notification to admin (admins will see via listener)
+                    return true;
+                } else {
+                    // keep as pending and possibly re-attempt later
+                    return false;
+                }
+
+            } catch (e) {
+                // don't spam logs
+                console.warn('Harpoon verify error', e);
+                return false;
+            }
+        }
+
+        // Periodic background verifier for any pending verification orders (runs only when admin is open)
+        let harpoonPollInterval = null;
+        function startHarpoonPolling() {
+            if(harpoonPollInterval) return;
+            harpoonPollInterval = setInterval(async () => {
+                const snap = await db.collection('orders').where('status', '==', 'Pending Verification').get();
+                snap.forEach(doc => {
+                    attemptHarpoonVerification(doc.id).catch(()=>{});
+                });
+            }, 30 * 1000); // every 30s; adjust as needed
+        }
+        function stopHarpoonPolling() { if(harpoonPollInterval) clearInterval(harpoonPollInterval); harpoonPollInterval = null; }
 
         // ==========================================
         // ADMIN FUNCTIONALITY
@@ -754,17 +990,20 @@
         function openAdmin() {
             document.getElementById('admin-dashboard').classList.remove('hidden');
             fetchOrders();
+            startHarpoonPolling();
         }
 
         function closeAdmin() {
             document.getElementById('admin-dashboard').classList.add('hidden');
             if(adminListener) adminListener(); 
+            stopHarpoonPolling();
         }
 
         function fetchOrders() {
             const list = document.getElementById('admin-orders-list');
+            if(adminListener) adminListener(); // unsubscribe previous
             
-            adminListener = db.collection('orders').orderBy('time', 'desc').limit(50).onSnapshot(snapshot => {
+            adminListener = db.collection('orders').orderBy('time', 'desc').limit(200).onSnapshot(snapshot => {
                 let html = '';
                 let total = 0;
                 let pending = 0;
@@ -774,31 +1013,38 @@
                     const data = doc.data();
                     const id = doc.id;
                     total++;
-                    if(data.status === 'Pending') pending++;
+                    if(data.status === 'Pending' || data.status === 'Pending Verification') pending++;
                     if(data.status === 'Delivered') delivered++;
 
                     let statusClass = 'bg-gray-500';
+                    if(data.status === 'Pending Verification') statusClass = 'bg-red-500 animate-pulse text-white';
                     if(data.status === 'Pending') statusClass = 'status-pending';
                     if(data.status === 'Processing') statusClass = 'status-processing';
                     if(data.status === 'Delivered') statusClass = 'status-delivered';
 
+                    // Build per-order UI with copy & message & verify buttons
                     html += `
-                        <div class="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:bg-white/5 transition">
+                        <div class="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:bg-white/5 transition" id="order-${id}">
                             <div class="flex-1">
                                 <div class="flex items-center gap-2 mb-1">
                                     <span class="text-xs font-mono text-gray-500">#${data.oId}</span>
                                     <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase ${statusClass}">${data.status}</span>
                                 </div>
                                 <h4 class="font-bold text-lg text-inherit">${data.item}</h4>
-                                <div class="text-sm text-gray-400 flex gap-4">
-                                    <span><i class="fa-solid fa-phone text-xs"></i> ${data.phone}</span>
+                                <div class="text-sm text-gray-400 flex gap-4 items-center mt-2">
+                                    <span><i class="fa-solid fa-phone text-xs"></i> <span id="phone-${id}">${data.phone}</span></span>
+                                    <button onclick="copyAdminPhone('${id}')" class="text-xs text-yellow-500 px-2 py-1 rounded border border-yellow-500/20">Copy</button>
                                     <span class="text-yellow-500 font-bold">GHC ${data.price}</span>
+                                    ${data.harpoonConfirmed ? '<span class="text-xs px-2 py-1 rounded bg-green-600 text-white">Paid</span>' : ''}
                                 </div>
+                                <div class="text-xs text-gray-400 mt-2">User: ${data.uid || 'unknown'}</div>
                             </div>
-                            <div class="flex gap-2">
+                            <div class="flex gap-2 mt-4 md:mt-0">
                                 <button onclick="updateStatus('${id}', 'Pending')" class="px-3 py-1 bg-yellow-600/20 text-yellow-500 text-xs rounded border border-yellow-600/50 hover:bg-yellow-600 hover:text-white transition">Pending</button>
+                                <button onclick="verifyOrder('${id}')" class="px-3 py-1 bg-blue-600/20 text-blue-500 text-xs rounded border border-blue-600/50 hover:bg-blue-600 hover:text-white transition">Verify</button>
                                 <button onclick="updateStatus('${id}', 'Processing')" class="px-3 py-1 bg-blue-600/20 text-blue-500 text-xs rounded border border-blue-600/50 hover:bg-blue-600 hover:text-white transition">Process</button>
-                                <button onclick="updateStatus('${id}', 'Delivered')" class="px-3 py-1 bg-green-600/20 text-green-500 text-xs rounded border border-green-600/50 hover:bg-green-600 hover:text-white transition">Deliver</button>
+                                <button onclick="deliverOrder('${id}')" class="px-3 py-1 bg-green-600/20 text-green-500 text-xs rounded border border-green-600/50 hover:bg-green-600 hover:text-white transition">Deliver</button>
+                                <button onclick="openMessageModal('${id}')" class="px-3 py-1 bg-white/10 text-white text-xs rounded border border-white/10 hover:bg-white/20 transition">Message</button>
                                 <button onclick="deleteOrder('${id}')" class="px-3 py-1 bg-red-600/20 text-red-500 text-xs rounded border border-red-600/50 hover:bg-red-600 hover:text-white transition"><i class="fa-solid fa-trash"></i></button>
                             </div>
                         </div>
@@ -813,10 +1059,38 @@
             });
         }
 
+        // Copy phone helper
+        function copyAdminPhone(docId) {
+            const phone = document.getElementById(`phone-${docId}`).innerText;
+            navigator.clipboard.writeText(phone).then(() => toast('Phone copied'));
+        }
+
+        // Manual verify button for admin (calls Harpoon verify function)
+        function verifyOrder(docId) {
+            toast('Attempting verification...');
+            attemptHarpoonVerification(docId).then(ok => {
+                if(ok) toast('Payment verified by Harpoon.');
+                else toast('No payment found yet.');
+            });
+        }
+
+        // Deliver helper prevents delivering if not paid
+        function deliverOrder(docId) {
+            db.collection('orders').doc(docId).get().then(docSnap => {
+                if(!docSnap.exists) return toast('Order not found', 'error');
+                const data = docSnap.data();
+                if(!data.harpoonConfirmed) {
+                    // If not paid, send message to user that they should pay before delivery
+                    sendMessageToUser(data.uid, `Please make payment for order ${data.oId} before delivery can be processed.`);
+                    toast('Order not paid — user notified.');
+                    return;
+                }
+                updateStatus(docId, 'Delivered');
+            });
+        }
+
         function updateStatus(id, status) {
-            db.collection('orders').doc(id).update({ status: status })
-                .then(() => toast(`Order marked as ${status}`))
-                .catch(err => toast("Error updating: " + err.message, "error"));
+            db.collection('orders').doc(id).update({ status: status }).then(() => toast(`Order marked as ${status}`)).catch(err => toast("Error updating: " + err.message, "error"));
         }
 
         function deleteOrder(id) {
@@ -825,6 +1099,55 @@
                     .then(() => toast("Order deleted"))
                     .catch(err => toast("Error: " + err.message, "error"));
             }
+        }
+
+        // Send a message to a user (stores in 'messages' collection)
+        function sendMessageToUser(uid, message) {
+            if(!uid || !message) return;
+            db.collection('messages').add({ uid: uid, message: message, fromAdmin: true, time: firebase.firestore.FieldValue.serverTimestamp() })
+            .then(() => toast('Message queued to user'))
+            .catch(e => toast('Error sending message', 'error'));
+        }
+
+        // Open a simple prompt to send message for a specific order (admin)
+        function openMessageModal(orderId) {
+            db.collection('orders').doc(orderId).get().then(docSnap => {
+                if(!docSnap.exists) return toast('Order not found');
+                const data = docSnap.data();
+                const msg = prompt(`Send message to user (${data.phone}) about order ${data.oId}:`);
+                if(msg) sendMessageToUser(data.uid, msg);
+            });
+        }
+
+        // Clear all orders (dangerous) - admin only
+        function clearAllOrders() {
+            if(!confirm('Are you sure? This will delete ALL orders.')) return;
+            // Batch delete (limited by Firestore batch size in real world)
+            db.collection('orders').get().then(snap => {
+                const batch = db.batch();
+                snap.forEach(doc => batch.delete(doc.ref));
+                return batch.commit();
+            }).then(() => {
+                toast('All orders cleared');
+            }).catch(e => toast('Error clearing orders', 'error'));
+        }
+
+        // Search orders by oId
+        function searchOrders(q) {
+            q = (q || '').trim();
+            if(!q) { fetchOrders(); return; }
+            const list = document.getElementById('admin-orders-list');
+            list.innerHTML = '<div class="p-8 text-center text-gray-500">Searching...</div>';
+            db.collection('orders').where('oId', '==', q).get().then(snap => {
+                if(snap.empty) return list.innerHTML = '<div class="p-8 text-center text-gray-500">No orders found.</div>';
+                let html = '';
+                snap.forEach(doc => {
+                    const data = doc.data();
+                    const id = doc.id;
+                    html += `\n                        <div class="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:bg-white/5 transition" id="order-${id}">\n                            <div class="flex-1">\n                                <div class="flex items-center gap-2 mb-1">\n                                    <span class="text-xs font-mono text-gray-500">#${data.oId}</span>\n                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded uppercase status-pending">${data.status}</span>\n                                </div>\n                                <h4 class="font-bold text-lg text-inherit">${data.item}</h4>\n                                <div class="text-sm text-gray-400 flex gap-4 items-center mt-2">\n                                    <span><i class="fa-solid fa-phone text-xs"></i> <span id="phone-${id}">${data.phone}</span></span>\n                                    <button onclick="copyAdminPhone('${id}')" class="text-xs text-yellow-500 px-2 py-1 rounded border border-yellow-500/20">Copy</button>\n                                    <span class="text-yellow-500 font-bold">GHC ${data.price}</span>\n                                </div>\n                            </div>\n                            <div class="flex gap-2 mt-4 md:mt-0">\n                                <button onclick="verifyOrder('${id}')" class="px-3 py-1 bg-blue-600/20 text-blue-500 text-xs rounded border border-blue-600/50 hover:bg-blue-600 hover:text-white transition">Verify</button>\n                                <button onclick="deliverOrder('${id}')" class="px-3 py-1 bg-green-600/20 text-green-500 text-xs rounded border border-green-600/50 hover:bg-green-600 hover:text-white transition">Deliver</button>\n                                <button onclick="openMessageModal('${id}')" class="px-3 py-1 bg-white/10 text-white text-xs rounded border border-white/10 hover:bg-white/20 transition">Message</button>\n                            </div>\n                        </div>\n                    `;
+                });
+                list.innerHTML = html;
+            });
         }
 
         function sendBroadcast() {
@@ -837,7 +1160,7 @@
             }).then(() => {
                 toast("Broadcast sent successfully");
                 document.getElementById('broadcast-msg').value = '';
-            });
+            }).catch(e => toast('Error sending broadcast', 'error'));
         }
 
         // CHATBOT
@@ -867,7 +1190,7 @@
         }
 
         function startHelp() {
-            toast("Tutorial: 1. Pick Bundle 2. Confirm Number 3. Pay via WhatsApp");
+            toast("Tutorial: 1. Pick Bundle 2. Confirm Number 3. Pay via MoMo");
         }
 
     </script>
